@@ -77,6 +77,10 @@ main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 label{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
 input[type="text"],input[type="number"]{width:100%;padding:12px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:var(--font);font-size:.9rem;font-weight:600;transition:border-color .2s;-webkit-appearance:none;appearance:none;outline:none;}
 input:focus{border-color:var(--accent);background:#151522;}
+select{width:100%;padding:12px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:var(--font);font-size:.9rem;font-weight:600;transition:border-color .2s;-webkit-appearance:none;appearance:none;outline:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6b8a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;}
+select:focus{border-color:var(--accent);background-color:#151522;}
 .type-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .type-btn{padding:14px;border:2px solid var(--border);border-radius:var(--radius-sm);background:transparent;color:var(--muted);font-family:var(--font);font-size:.85rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;}
 .type-btn.active-in{border-color:var(--in-color);color:var(--in-color);background:rgba(184,255,87,.06);}
@@ -219,16 +223,38 @@ input:focus{border-color:var(--accent);background:#151522;}
 <div id="setupScreen">
   <div class="setup-emoji">📦</div>
   <h1>StockOS</h1>
-  <p>Masukkan URL Google Apps Script dan nama kamu untuk mulai.</p>
+  <p>Lengkapi data dirimu sekali saja. Tersimpan otomatis di HP ini.</p>
   <div class="setup-card">
     <div class="setup-field">
-      <label>URL Apps Script</label>
-      <input type="text" id="setupApiUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off"/>
-      <div class="setup-hint">Copy dari Apps Script → Deploy → URL /exec</div>
+      <label>Nama Lengkap</label>
+      <input type="text" id="setupName" placeholder="e.g. Budi Santoso" autocomplete="name"/>
     </div>
     <div class="setup-field">
-      <label>Nama Kamu</label>
-      <input type="text" id="setupName" placeholder="e.g. Budi Santoso" autocomplete="name"/>
+      <label>Departemen</label>
+      <select id="setupDept">
+        <option value="">-- Pilih Departemen --</option>
+        <option>HR</option>
+        <option>Finance</option>
+        <option>IT</option>
+        <option>Marketing</option>
+        <option>Operations</option>
+        <option>Procurement</option>
+        <option>Legal</option>
+        <option>General Affairs</option>
+        <option>Management</option>
+      </select>
+    </div>
+    <div class="setup-field">
+      <label>Lokasi / Gedung</label>
+      <select id="setupLocation">
+        <option value="">-- Pilih Lokasi --</option>
+        <option>Head Office</option>
+        <option>Branch - Jakarta Selatan</option>
+        <option>Branch - Jakarta Utara</option>
+        <option>Branch - Bandung</option>
+        <option>Branch - Surabaya</option>
+        <option>Warehouse</option>
+      </select>
     </div>
     <button class="btn-setup" onclick="saveSetup()">Mulai Sekarang →</button>
   </div>
@@ -315,6 +341,41 @@ input:focus{border-color:var(--accent);background:#151522;}
         </div>
         <div class="form-group"><label>Jumlah</label><input type="number" id="qtyInput" placeholder="0" min="1" inputmode="numeric"/></div>
         <div class="form-group"><label>Catatan <span style="color:var(--muted);font-weight:400;text-transform:none;">(opsional)</span></label><input type="text" id="notesInput" placeholder="e.g. Restock bulanan"/></div>
+
+        <!-- Requester Info -->
+        <div style="height:1px;background:var(--border);margin:4px 0 14px;"></div>
+        <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Info Peminta</div>
+        <div class="form-group">
+          <label>Nama Peminta</label>
+          <input type="text" id="requesterInput" placeholder="Nama yang meminta ATK"/>
+        </div>
+        <div class="form-group">
+          <label>Departemen</label>
+          <select id="deptInput">
+            <option value="">-- Pilih Departemen --</option>
+            <option>HR</option>
+            <option>Finance</option>
+            <option>IT</option>
+            <option>Marketing</option>
+            <option>Operations</option>
+            <option>Procurement</option>
+            <option>Legal</option>
+            <option>General Affairs</option>
+            <option>Management</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Lokasi / Gedung</label>
+          <select id="locationInput">
+            <option value="">-- Pilih Lokasi --</option>
+            <option>Head Office</option>
+            <option>Branch - Jakarta Selatan</option>
+            <option>Branch - Jakarta Utara</option>
+            <option>Branch - Bandung</option>
+            <option>Branch - Surabaya</option>
+            <option>Warehouse</option>
+          </select>
+        </div>
         <button class="btn-primary" id="submitBtn" onclick="submitForm()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Simpan Transaksi
         </button>
@@ -363,8 +424,10 @@ input:focus{border-color:var(--accent);background:#151522;}
 
 <script>
 // ── Config ────────────────────────────────────────────────────
-let API_URL      = localStorage.getItem("stockos_api") || "";
+let API_URL      = "https://script.google.com/macros/s/AKfycbxUjEmP0-E1SuvKdDGCzOUkYHrQJ8-IMOHMKPfrG_SJV42n3fsDs3YOCMzg8WNgojdw1w/exec";
 let employeeName = localStorage.getItem("stockos_name") || "";
+let employeeDept = localStorage.getItem("stockos_dept") || "";
+let employeeLoc  = localStorage.getItem("stockos_loc")  || "";
 let currentType  = "IN";
 let allStock     = [];
 let allHistory   = [];
@@ -373,7 +436,7 @@ let lookupTimer  = null;
 
 // ── Boot ──────────────────────────────────────────────────────
 window.onload = function() {
-  if (!API_URL || !employeeName) {
+  if (!employeeName) {
     document.getElementById("loadingOverlay").style.display = "none";
     document.getElementById("setupScreen").classList.add("show");
     return;
@@ -384,36 +447,42 @@ window.onload = function() {
 function initApp() {
   updateEmployeeDisplay();
   document.getElementById("app").style.display = "flex";
+  // Auto-fill requester fields from saved profile
+  if (employeeName) document.getElementById("requesterInput").value = employeeName;
+  if (employeeDept) document.getElementById("deptInput").value      = employeeDept;
+  if (employeeLoc)  document.getElementById("locationInput").value  = employeeLoc;
   loadAll();
 }
 
 // ── Setup ─────────────────────────────────────────────────────
 function saveSetup() {
-  const url  = document.getElementById("setupApiUrl").value.trim();
   const name = document.getElementById("setupName").value.trim();
-  if (!url)  { showToast("Masukkan URL API", "error"); return; }
+  const dept = document.getElementById("setupDept").value;
+  const loc  = document.getElementById("setupLocation").value;
   if (!name) { showToast("Masukkan nama kamu", "error"); return; }
-  if (!url.startsWith("https://script.google.com")) {
-    showToast("URL tidak valid. Harus dari script.google.com", "error"); return;
-  }
-  API_URL = url; employeeName = name;
-  localStorage.setItem("stockos_api", url);
+  if (!dept) { showToast("Pilih departemen", "error"); return; }
+  if (!loc)  { showToast("Pilih lokasi", "error"); return; }
+  employeeName = name; employeeDept = dept; employeeLoc = loc;
   localStorage.setItem("stockos_name", name);
+  localStorage.setItem("stockos_dept", dept);
+  localStorage.setItem("stockos_loc",  loc);
   document.getElementById("setupScreen").classList.remove("show");
   initApp();
 }
 
 function changeUser() {
-  const name = prompt("Ganti nama:", employeeName);
-  if (name && name.trim()) {
-    employeeName = name.trim();
-    localStorage.setItem("stockos_name", employeeName);
-    updateEmployeeDisplay();
-    showToast("Nama diubah: " + employeeName, "success");
-  }
+  // Reset profile so setup screen shows again
+  localStorage.removeItem("stockos_name");
+  localStorage.removeItem("stockos_dept");
+  localStorage.removeItem("stockos_loc");
+  employeeName = ""; employeeDept = ""; employeeLoc = "";
+  document.getElementById("setupName").value     = "";
+  document.getElementById("setupDept").value     = "";
+  document.getElementById("setupLocation").value = "";
+  document.getElementById("setupScreen").classList.add("show");
 }
 function updateEmployeeDisplay() {
-  document.getElementById("headerName").textContent    = (employeeName||"–").split(" ")[0];
+  document.getElementById("headerName").textContent    = (employeeName||"–").split(" ")[0] + (employeeDept ? " · "+employeeDept : "");
   document.getElementById("avatarInitial").textContent = (employeeName[0]||"?").toUpperCase();
 }
 
@@ -610,11 +679,18 @@ function hidePreview() { document.getElementById("itemPreview").classList.remove
 
 // ── Submit ────────────────────────────────────────────────────
 async function submitForm() {
-  const itemId = document.getElementById("itemIdInput").value.trim();
-  const qty    = document.getElementById("qtyInput").value.trim();
-  const notes  = document.getElementById("notesInput").value.trim();
-  if (!itemId) { showToast("Masukkan atau scan Item ID", "error"); return; }
+  const itemId    = document.getElementById("itemIdInput").value.trim();
+  const qty       = document.getElementById("qtyInput").value.trim();
+  const notes     = document.getElementById("notesInput").value.trim();
+  const requester = document.getElementById("requesterInput").value.trim();
+  const dept      = document.getElementById("deptInput").value;
+  const location  = document.getElementById("locationInput").value;
+
+  if (!itemId)    { showToast("Masukkan atau scan Item ID", "error"); return; }
   if (!qty || Number(qty)<=0) { showToast("Masukkan jumlah yang valid", "error"); return; }
+  if (!requester) { showToast("Masukkan nama peminta", "error"); return; }
+  if (!dept)      { showToast("Pilih departemen", "error"); return; }
+  if (!location)  { showToast("Pilih lokasi", "error"); return; }
 
   const btn = document.getElementById("submitBtn");
   btn.disabled = true;
@@ -622,8 +698,10 @@ async function submitForm() {
 
   try {
     const res = await jsonp({
-      action:"submit", itemId, type:currentType,
-      qty:Number(qty), employee:employeeName, notes
+      action: "submit", itemId, type: currentType,
+      qty: Number(qty), employee: employeeName,
+      requester, dept, location,
+      notes: notes || (dept + " · " + location)
     });
     if (res.ok) {
       if (itemCache[itemId.toUpperCase()]) itemCache[itemId.toUpperCase()].current = res.newBalance;
@@ -698,7 +776,11 @@ function renderHistory() {
   list.innerHTML = items.map(t => `
     <div class="tx-item">
       <div class="tx-type-badge ${t.type}">${t.type}</div>
-      <div class="tx-detail"><div class="tx-name">${t.itemName}</div><div class="tx-meta">${t.employee} · ${t.timestamp}</div></div>
+      <div class="tx-detail">
+        <div class="tx-name">${t.itemName}</div>
+        <div class="tx-meta">${t.requester||t.employee} · ${t.dept||""} ${t.location?"· "+t.location:""}</div>
+        <div class="tx-meta">${t.timestamp}</div>
+      </div>
       <div class="tx-right"><div class="tx-qty ${t.type}">${t.type==="IN"?"+":"−"}${t.qty}</div><div class="tx-balance">sisa: ${t.balance}</div></div>
     </div>`).join("");
 }
