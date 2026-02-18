@@ -455,7 +455,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 <script>
 // ── Config ────────────────────────────────────────────────────
-const API_URL    = "https://script.google.com/macros/s/AKfycbxUjEmP0-E1SuvKdDGCzOUkYHrQJ8-IMOHMKPfrG_SJV42n3fsDs3YOCMzg8WNgojdw1w/exec";
+const API_URL    = "https://script.google.com/macros/s/AKfycbzmtF64YgJcYg_YjA1iFDTvjnMzCx49SW_0fa1bpFYQz3ZQCO--pZfxCCI4wifM-gzb8A/exec";
 let employeeName = localStorage.getItem("stockos_name") || "";
 let employeeDept = localStorage.getItem("stockos_dept") || "";
 let employeeLoc  = localStorage.getItem("stockos_loc")  || "";
@@ -464,14 +464,12 @@ let currentFilter= "ALL";
 let allStock     = [];
 let allHistory   = [];
 let itemCache    = {};   // { itemId: itemData }
-let imageCache   = {};   // { itemId: base64 } stored in localStorage
+let imageCache   = {};   // { itemId: imageUrl } loaded from Google Sheet (column F MASTER_ITEMS)
 let lookupTimer  = null;
 let cart         = [];   // [{ itemId, name, unit, qty, img }]
 
 // ── Boot ──────────────────────────────────────────────────────
 window.onload = function() {
-  // Load image cache from localStorage
-  try { imageCache = JSON.parse(localStorage.getItem("stockos_imgs") || "{}"); } catch(e){}
   if (!employeeName) {
     document.getElementById("loadingOverlay").style.display = "none";
     document.getElementById("setupScreen").classList.add("show");
@@ -546,8 +544,12 @@ async function loadAll() {
     ]);
     allStock   = stock;
     allHistory = history;
-    // Pre-fill itemCache from stock data
-    stock.forEach(s => { itemCache[s.id.toUpperCase()] = { found:true, id:s.id, name:s.name, category:s.category, unit:s.unit, minStock:s.minStock, current:s.current }; });
+    // Build imageCache from stock data (imageUrl comes from column F of MASTER_ITEMS)
+    imageCache = {};
+    stock.forEach(s => {
+      if (s.imageUrl) imageCache[s.id.toUpperCase()] = s.imageUrl;
+      itemCache[s.id.toUpperCase()] = { found:true, id:s.id, name:s.name, category:s.category, unit:s.unit, minStock:s.minStock, current:s.current, imageUrl:s.imageUrl||"" };
+    });
     renderDashboard();
     renderStock("ALL");
     renderHistory();
@@ -631,11 +633,8 @@ function showPreview(item) {
   const el = document.getElementById("previewStock");
   el.textContent = "Stok: "+item.current+" "+item.unit;
   el.className   = "item-preview-stock"+(item.current<=item.minStock?" stock-low":"");
-  // Show image if exists
   const imgWrap = document.getElementById("previewImgWrap");
-  const img = imageCache[item.id.toUpperCase()];
-  if (img) { imgWrap.innerHTML = `<img src="${img}" class="item-preview-img" style="width:32px;height:32px;border-radius:6px;object-fit:cover;"/>`; }
-  else imgWrap.innerHTML = getItemEmoji(item.category);
+  imgWrap.innerHTML = getImgEl(item.id, 32, "6px");
   document.getElementById("itemPreview").classList.add("show");
 }
 function hidePreview() { document.getElementById("itemPreview").classList.remove("show"); }
@@ -686,12 +685,8 @@ function renderCart() {
     return;
   }
   list.innerHTML = cart.map((c, i) => {
-    const img = imageCache[c.itemId];
-    const imgEl = img
-      ? `<img src="${img}" class="cart-item-img"/>`
-      : `<div class="cart-item-img-placeholder">${getItemEmoji("")}</div>`;
     return `<div class="cart-item">
-      ${imgEl}
+      ${getImgEl(c.itemId, 40, "8px")}
       <div class="cart-item-info">
         <div class="cart-item-name">${c.name}</div>
         <div class="cart-item-id">${c.itemId} · ${c.unit}</div>
@@ -755,51 +750,15 @@ async function submitForm() {
   }
 }
 
-// ── Image Management ──────────────────────────────────────────
-function saveImageCache() {
-  try { localStorage.setItem("stockos_imgs", JSON.stringify(imageCache)); } catch(e){}
-}
-
-// Called from stock page when user taps item image area
-function openImageUpload(itemId) {
-  const input = document.createElement("input");
-  input.type  = "file";
-  input.accept= "image/*";
-  input.capture = "environment"; // prefer camera on mobile
-  input.onchange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      // Resize image to max 200x200 to keep localStorage small
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const size = 160;
-        canvas.width = canvas.height = size;
-        const ctx = canvas.getContext("2d");
-        // Cover crop
-        const s = Math.min(img.width, img.height);
-        const ox = (img.width - s) / 2;
-        const oy = (img.height - s) / 2;
-        ctx.drawImage(img, ox, oy, s, s, 0, 0, size, size);
-        imageCache[itemId.toUpperCase()] = canvas.toDataURL("image/jpeg", 0.7);
-        saveImageCache();
-        renderStock(currentFilter);
-        showToast("📸 Foto tersimpan untuk "+itemId, "success");
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-  };
-  input.click();
-}
-
-function removeImage(itemId) {
-  delete imageCache[itemId.toUpperCase()];
-  saveImageCache();
-  renderStock(currentFilter);
-  showToast("Foto dihapus", "warn");
+// ── Image helpers ─────────────────────────────────────────────
+// Foto diambil dari kolom F (Image URL) di sheet MASTER_ITEMS
+// Upload foto: buka Google Sheet → MASTER_ITEMS → kolom "Image URL"
+// Paste URL gambar (Google Drive, Imgur, dll) → refresh web app
+function getImgEl(itemId, size, rounded) {
+  const url = imageCache[(itemId||"").toUpperCase()];
+  const r   = rounded || "8px";
+  if (url) return `<img src="${url}" style="width:${size}px;height:${size}px;border-radius:${r};object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'"/>`;
+  return `<div style="width:${size}px;height:${size}px;border-radius:${r};background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.45)}px;flex-shrink:0;">${getItemEmoji("")}</div>`;
 }
 
 // ── Render Dashboard ──────────────────────────────────────────
@@ -814,14 +773,13 @@ function renderDashboard() {
   document.getElementById("statOut").textContent = outT;
   const c = document.getElementById("lowStockList");
   if (!low.length) { c.innerHTML='<div class="empty"><p>Semua stok aman 🎉</p></div>'; return; }
-  c.innerHTML = low.map(item => {
-    const img = imageCache[item.id.toUpperCase()];
-    const imgEl = img ? `<img src="${img}" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0;"/>` : `<div class="stock-item-img-placeholder" style="background:rgba(255,77,109,.1);">${getItemEmoji(item.category)}</div>`;
-    return `<div class="stock-card low" style="margin-bottom:8px;">${imgEl}
-      <div class="stock-info"><div class="stock-name">${item.name}</div><div class="stock-id">${item.id}</div><span class="stock-badge badge-low">⚠️ Low</span></div>
-      <div class="stock-qty-wrap"><div class="stock-qty">${item.current}</div><div class="stock-unit">${item.unit}</div></div>
-    </div>`;
-  }).join("");
+    c.innerHTML = low.map(item => {
+      return `<div class="stock-card low" style="margin-bottom:8px;">
+        ${getImgEl(item.id, 40, "10px")}
+        <div class="stock-info"><div class="stock-name">${item.name}</div><div class="stock-id">${item.id}</div><span class="stock-badge badge-low">⚠️ Low</span></div>
+        <div class="stock-qty-wrap"><div class="stock-qty">${item.current}</div><div class="stock-unit">${item.unit}</div></div>
+      </div>`;
+    }).join("");
 }
 
 // ── Render Stock ──────────────────────────────────────────────
@@ -842,18 +800,8 @@ function renderStock(filter) {
 
   grid.innerHTML = items.map(item => {
     const isLow = item.status==="LOW";
-    const img   = imageCache[item.id.toUpperCase()];
-    const imgEl = img
-      ? `<div style="position:relative;flex-shrink:0;">
-           <img src="${img}" class="stock-item-img" onclick="openImageUpload('${item.id}')" title="Tap untuk ganti foto"/>
-           <button onclick="removeImage('${item.id}')" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--out-color);border:none;color:#fff;font-size:.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">✕</button>
-         </div>`
-      : `<div class="stock-item-img-placeholder" onclick="openImageUpload('${item.id}')" title="Tap untuk tambah foto" style="cursor:pointer;border:2px dashed var(--border);">
-           <span style="font-size:.6rem;color:var(--muted);text-align:center;line-height:1.2;">📷<br>Foto</span>
-         </div>`;
-
     return `<div class="stock-card ${isLow?"low":"ok"}">
-      ${imgEl}
+      ${getImgEl(item.id, 44, "10px")}
       <div class="stock-info">
         <div class="stock-name">${item.name}</div>
         <div class="stock-id">${item.id} · ${item.category}</div>
@@ -885,10 +833,6 @@ function renderHistory() {
   if (!items.length) { list.innerHTML='<div class="empty"><p>Tidak ada transaksi</p></div>'; return; }
 
   list.innerHTML = items.map(t => {
-    const img = imageCache[(t.itemId||"").toUpperCase()];
-    const imgEl = img
-      ? `<img src="${img}" class="tx-row-img"/>`
-      : `<div class="tx-row-img-placeholder">${getItemEmoji("")}</div>`;
     return `<div class="tx-item">
       <div class="tx-header">
         <span class="tx-type-badge ${t.type}">${t.type}</span>
@@ -897,9 +841,9 @@ function renderHistory() {
       </div>
       <div class="tx-items-list">
         <div class="tx-row">
-          ${imgEl}
+          ${getImgEl(t.itemId, 24, "4px")}
           <span class="tx-row-name">${t.itemName}</span>
-          <span class="tx-row-qty ${t.type}">${t.type==="IN"?"+":"−"}${t.qty} ${t.unit||""}</span>
+          <span class="tx-row-qty ${t.type}">${t.type==="IN"?"+":"−"}${t.qty}</span>
           <span style="font-family:var(--mono);font-size:.65rem;color:var(--muted);margin-left:4px;">→${t.balance}</span>
         </div>
       </div>
