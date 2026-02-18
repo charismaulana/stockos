@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>StockOS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0a0a0f;--surface:#13131c;--surface2:#1c1c2a;--border:#2a2a3d;
+  --accent:#00e5ff;--accent2:#ff4d6d;--in-color:#b8ff57;--out-color:#ff4d6d;
+  --text:#f0f0f8;--muted:#6b6b8a;
+  --font:'Syne',sans-serif;--mono:'DM Mono',monospace;
+  --radius:14px;--radius-sm:8px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-tap-highlight-color:transparent;}
+body{min-height:100dvh;display:flex;flex-direction:column;overflow-x:hidden;}
+
+/* Setup screen */
+#setupScreen{
+  position:fixed;inset:0;z-index:500;
+  background:var(--bg);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:32px 24px;
+  text-align:center;
+}
+#setupScreen h1{font-size:2rem;font-weight:800;margin-bottom:8px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+#setupScreen p{color:var(--muted);font-size:.85rem;margin-bottom:24px;line-height:1.6;}
+.setup-field{width:100%;max-width:400px;margin-bottom:12px;}
+.setup-field label{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:6px;text-align:left;}
+.setup-field input{width:100%;padding:14px;background:var(--surface2);border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);color:var(--text);font-family:var(--font);font-size:.95rem;
+  font-weight:600;outline:none;transition:border-color .2s;}
+.setup-field input:focus{border-color:var(--accent);}
+.btn-setup{width:100%;max-width:400px;padding:16px;border-radius:var(--radius-sm);
+  background:var(--accent);border:none;color:#0a0a0f;font-family:var(--font);
+  font-size:.95rem;font-weight:800;cursor:pointer;margin-top:8px;}
+
+/* Header */
+header{position:sticky;top:0;z-index:100;background:rgba(10,10,15,.9);
+  backdrop-filter:blur(16px);border-bottom:1px solid var(--border);
+  padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:60px;}
+.logo{font-size:1.1rem;font-weight:800;letter-spacing:-.02em;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.logo span{font-weight:400;opacity:.5;}
+.user-badge{display:flex;align-items:center;gap:8px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:20px;padding:4px 12px 4px 6px;
+  cursor:pointer;font-size:.78rem;font-weight:600;}
+.avatar{width:26px;height:26px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;color:#000;}
+
+/* Nav */
+.nav-bar{display:flex;background:var(--surface);border-bottom:1px solid var(--border);
+  overflow-x:auto;scrollbar-width:none;flex-shrink:0;}
+.nav-bar::-webkit-scrollbar{display:none;}
+.nav-btn{flex:1;min-width:80px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;padding:10px 8px;border:none;background:transparent;
+  color:var(--muted);font-family:var(--font);font-size:.65rem;font-weight:700;
+  letter-spacing:.05em;text-transform:uppercase;cursor:pointer;transition:color .2s;position:relative;}
+.nav-btn svg{width:20px;height:20px;}
+.nav-btn.active{color:var(--accent);}
+.nav-btn.active::after{content:"";position:absolute;bottom:0;left:20%;right:20%;
+  height:2px;background:var(--accent);border-radius:2px 2px 0 0;}
+
+/* Main */
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.page{display:none;animation:fadeUp .3s ease;}
+.page.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin:12px;overflow:hidden;}
+.card-body{padding:16px;}
+
+/* Form */
+.form-group{margin-bottom:14px;}
+label{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+input[type="text"],input[type="number"],select,textarea{
+  width:100%;padding:12px 14px;background:var(--surface2);border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);color:var(--text);font-family:var(--font);
+  font-size:.9rem;font-weight:600;transition:border-color .2s,background .2s;
+  -webkit-appearance:none;appearance:none;outline:none;}
+input:focus,select:focus{border-color:var(--accent);background:#151522;}
+
+/* Type toggle */
+.type-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.type-btn{padding:14px;border:2px solid var(--border);border-radius:var(--radius-sm);
+  background:transparent;color:var(--muted);font-family:var(--font);font-size:.85rem;
+  font-weight:700;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;}
+.type-btn.active-in{border-color:var(--in-color);color:var(--in-color);background:rgba(184,255,87,.06);}
+.type-btn.active-out{border-color:var(--out-color);color:var(--out-color);background:rgba(255,77,109,.06);}
+
+/* Item preview */
+.item-preview{display:none;align-items:center;gap:10px;
+  background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.2);
+  border-radius:var(--radius-sm);padding:10px 14px;margin-top:8px;}
+.item-preview.show{display:flex;}
+.item-preview-name{font-size:.88rem;font-weight:700;}
+.item-preview-stock{font-family:var(--mono);font-size:.75rem;color:var(--accent);margin-left:auto;}
+.stock-low{color:var(--out-color)!important;}
+
+/* Buttons */
+.btn-primary{width:100%;padding:16px;border-radius:var(--radius-sm);
+  background:var(--accent);border:none;color:#0a0a0f;font-family:var(--font);
+  font-size:.95rem;font-weight:800;cursor:pointer;transition:opacity .15s,transform .1s;
+  display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn-primary:active{opacity:.85;transform:scale(.98);}
+.btn-primary:disabled{opacity:.4;pointer-events:none;}
+.btn-primary.out-mode{background:var(--out-color);}
+
+/* Scan hero */
+.scan-hero{margin:12px;border-radius:var(--radius);overflow:hidden;
+  background:linear-gradient(135deg,#0d1b2a 0%,#1a0a1e 100%);
+  border:1px solid var(--border);padding:24px 16px;text-align:center;position:relative;}
+.scan-hero::before{content:"";position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 0%,rgba(0,229,255,.08) 0%,transparent 70%);pointer-events:none;}
+.scan-icon-wrap{width:72px;height:72px;border-radius:50%;margin:0 auto 16px;
+  background:rgba(0,229,255,.08);border:2px solid rgba(0,229,255,.2);
+  display:flex;align-items:center;justify-content:center;
+  animation:pulse 2.5s ease-in-out infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,229,255,.2);}50%{box-shadow:0 0 0 14px rgba(0,229,255,.0);}}
+.scan-icon-wrap svg{width:34px;height:34px;color:var(--accent);}
+.scan-title{font-size:1.4rem;font-weight:800;margin-bottom:6px;}
+.scan-sub{font-size:.82rem;color:var(--muted);line-height:1.5;}
+
+/* Toast */
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
+  z-index:1000;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:12px 20px;font-size:.85rem;font-weight:600;
+  max-width:calc(100% - 32px);opacity:0;transition:opacity .25s,transform .25s;
+  pointer-events:none;text-align:center;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.success{border-color:var(--in-color);color:var(--in-color);}
+#toast.error{border-color:var(--out-color);color:var(--out-color);}
+#toast.warn{border-color:#ffd166;color:#ffd166;}
+
+/* Stats */
+.stats-grid{padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
+.stat-label{font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+.stat-value{font-family:var(--mono);font-size:2rem;font-weight:700;line-height:1;}
+.stat-card.alert .stat-value{color:var(--out-color);}
+.stat-card.accent .stat-value{color:var(--accent);}
+.stat-card.green .stat-value{color:var(--in-color);}
+
+/* Quick actions */
+.quick-actions{padding:0 12px 12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.qa-btn{padding:16px 12px;border-radius:var(--radius);border:none;cursor:pointer;
+  font-family:var(--font);font-weight:700;font-size:.82rem;
+  display:flex;flex-direction:column;align-items:flex-start;gap:8px;transition:transform .1s,opacity .15s;}
+.qa-btn:active{transform:scale(.97);}
+.qa-btn.in{background:rgba(184,255,87,.1);color:var(--in-color);border:1.5px solid rgba(184,255,87,.2);}
+.qa-btn.out{background:rgba(255,77,109,.1);color:var(--out-color);border:1.5px solid rgba(255,77,109,.2);}
+.qa-btn svg{width:22px;height:22px;}
+
+/* Stock */
+.filter-bar{padding:12px 12px 0;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;}
+.filter-bar::-webkit-scrollbar{display:none;}
+.filter-chip{padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);
+  background:transparent;color:var(--muted);font-family:var(--font);font-size:.72rem;
+  font-weight:700;white-space:nowrap;cursor:pointer;transition:all .2s;}
+.filter-chip.active{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.06);}
+.stock-grid{padding:12px;display:grid;gap:10px;}
+.stock-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:14px 16px;display:flex;align-items:center;gap:12px;position:relative;overflow:hidden;}
+.stock-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;}
+.stock-card.ok::before{background:var(--in-color);}
+.stock-card.low::before{background:var(--out-color);}
+.stock-card-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.2rem;}
+.stock-card.ok .stock-card-icon{background:rgba(184,255,87,.1);}
+.stock-card.low .stock-card-icon{background:rgba(255,77,109,.1);}
+.stock-info{flex:1;min-width:0;}
+.stock-name{font-size:.9rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stock-id{font-family:var(--mono);font-size:.68rem;color:var(--muted);margin-top:2px;}
+.stock-qty-wrap{text-align:right;flex-shrink:0;}
+.stock-qty{font-family:var(--mono);font-size:1.5rem;font-weight:700;line-height:1;}
+.stock-card.ok .stock-qty{color:var(--in-color);}
+.stock-card.low .stock-qty{color:var(--out-color);}
+.stock-unit{font-size:.68rem;color:var(--muted);text-align:right;}
+.stock-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.6rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-top:4px;}
+.badge-ok{background:rgba(184,255,87,.12);color:var(--in-color);}
+.badge-low{background:rgba(255,77,109,.12);color:var(--out-color);}
+
+/* History */
+.tx-list{padding:12px;display:flex;flex-direction:column;gap:8px;}
+.tx-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;display:flex;align-items:center;gap:12px;}
+.tx-type-badge{width:36px;height:36px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;}
+.tx-type-badge.IN{background:rgba(184,255,87,.12);color:var(--in-color);}
+.tx-type-badge.OUT{background:rgba(255,77,109,.12);color:var(--out-color);}
+.tx-detail{flex:1;min-width:0;}
+.tx-name{font-size:.85rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tx-meta{font-size:.7rem;color:var(--muted);margin-top:2px;}
+.tx-right{text-align:right;flex-shrink:0;}
+.tx-qty{font-family:var(--mono);font-size:1rem;font-weight:700;}
+.tx-qty.IN{color:var(--in-color);}
+.tx-qty.OUT{color:var(--out-color);}
+.tx-balance{font-family:var(--mono);font-size:.68rem;color:var(--muted);}
+
+/* Spinner & empty */
+.spinner{width:18px;height:18px;border:2px solid rgba(10,10,15,.3);border-top-color:currentColor;border-radius:50%;animation:spin .6s linear infinite;display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.empty{text-align:center;padding:40px 20px;color:var(--muted);}
+.empty p{font-size:.85rem;}
+
+/* Loading overlay */
+#loadingOverlay{position:fixed;inset:0;z-index:400;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+#loadingOverlay p{color:var(--muted);font-size:.85rem;}
+.loading-logo{font-size:2rem;font-weight:800;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+</style>
+</head>
+<body>
+
+<!-- Setup Screen (first time) -->
+<div id="setupScreen" style="display:none;">
+  <div style="font-size:3rem;margin-bottom:16px;">📦</div>
+  <h1>StockOS</h1>
+  <p>Selamat datang! Masukkan URL API dan nama kamu untuk mulai menggunakan sistem inventaris.</p>
+  <div class="setup-field">
+    <label>URL Google Apps Script</label>
+    <input type="text" id="setupApiUrl" placeholder="https://script.google.com/macros/s/.../exec"/>
+  </div>
+  <div class="setup-field">
+    <label>Nama Kamu</label>
+    <input type="text" id="setupName" placeholder="e.g. Budi Santoso"/>
+  </div>
+  <button class="btn-setup" onclick="saveSetup()">Mulai →</button>
+</div>
+
+<!-- Loading -->
+<div id="loadingOverlay">
+  <div class="loading-logo">StockOS</div>
+  <div class="spinner" style="color:var(--accent);width:28px;height:28px;border-width:3px;"></div>
+  <p>Memuat data…</p>
+</div>
+
+<!-- App (hidden until loaded) -->
+<div id="app" style="display:none;flex-direction:column;height:100%;">
+
+<header>
+  <div class="logo">STOCK<span>OS</span></div>
+  <div class="user-badge" onclick="changeUser()">
+    <div class="avatar" id="avatarInitial">?</div>
+    <span id="headerName">–</span>
+  </div>
+</header>
+
+<nav class="nav-bar">
+  <button class="nav-btn active" onclick="showPage('home')" id="nav-home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Home
+  </button>
+  <button class="nav-btn" onclick="showPage('scan')" id="nav-scan">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="12" y1="7" x2="12" y2="17"/></svg>
+    Scan
+  </button>
+  <button class="nav-btn" onclick="showPage('stock')" id="nav-stock">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    Stock
+  </button>
+  <button class="nav-btn" onclick="showPage('history')" id="nav-history">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    History
+  </button>
+</nav>
+
+<main>
+
+<!-- HOME -->
+<div class="page active" id="page-home">
+  <div class="stats-grid">
+    <div class="stat-card accent"><div class="stat-label">Total Items</div><div class="stat-value" id="statTotal">–</div></div>
+    <div class="stat-card alert"><div class="stat-label">Low Stock</div><div class="stat-value" id="statLow">–</div></div>
+    <div class="stat-card green"><div class="stat-label">Today IN</div><div class="stat-value" id="statIn">–</div></div>
+    <div class="stat-card"><div class="stat-label">Today OUT</div><div class="stat-value" id="statOut">–</div></div>
+  </div>
+  <div style="padding:0 12px 8px;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);">Quick Action</div>
+  <div class="quick-actions">
+    <button class="qa-btn in" onclick="goScan('IN')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Stock IN
+    </button>
+    <button class="qa-btn out" onclick="goScan('OUT')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Stock OUT
+    </button>
+  </div>
+  <div style="padding:0 12px 8px;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);">⚠️ Low Stock</div>
+  <div id="lowStockList" style="padding:0 12px 12px;"><div class="empty"><p>Loading…</p></div></div>
+</div>
+
+<!-- SCAN -->
+<div class="page" id="page-scan">
+  <div class="scan-hero">
+    <div class="scan-icon-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><rect x="7" y="7" width="3" height="3"/><rect x="14" y="7" width="3" height="3"/><rect x="7" y="14" width="3" height="3"/></svg>
+    </div>
+    <div class="scan-title">Record Stock</div>
+    <div class="scan-sub">Scan barcode atau ketik Item ID</div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <div class="form-group">
+        <label>Tipe Transaksi</label>
+        <div class="type-toggle">
+          <button class="type-btn active-in" id="btnIN" onclick="setType('IN')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Masuk
+          </button>
+          <button class="type-btn" id="btnOUT" onclick="setType('OUT')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Keluar
+          </button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Item ID / Barcode</label>
+        <input type="text" id="itemIdInput" placeholder="Scan atau ketik e.g. OFF-001"
+          oninput="onItemIdChange()" autocomplete="off" autocorrect="off"
+          autocapitalize="characters" spellcheck="false"/>
+        <div class="item-preview" id="itemPreview">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <div>
+            <div class="item-preview-name" id="previewName"></div>
+            <div style="font-size:.68rem;color:var(--muted)" id="previewCat"></div>
+          </div>
+          <div class="item-preview-stock" id="previewStock"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Jumlah</label>
+        <input type="number" id="qtyInput" placeholder="0" min="1" inputmode="numeric"/>
+      </div>
+      <div class="form-group">
+        <label>Catatan <span style="color:var(--muted);font-weight:400;text-transform:none;">(opsional)</span></label>
+        <input type="text" id="notesInput" placeholder="e.g. Restock bulanan"/>
+      </div>
+      <button class="btn-primary" id="submitBtn" onclick="submitForm()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Simpan Transaksi
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- STOCK -->
+<div class="page" id="page-stock">
+  <div class="filter-bar">
+    <button class="filter-chip active" onclick="filterStock('ALL',this)">Semua</button>
+    <button class="filter-chip" onclick="filterStock('LOW',this)">⚠️ Low</button>
+    <button class="filter-chip" onclick="filterStock('OK',this)">✅ OK</button>
+  </div>
+  <div class="stock-grid" id="stockGrid"><div class="empty"><p>Loading…</p></div></div>
+</div>
+
+<!-- HISTORY -->
+<div class="page" id="page-history">
+  <div class="card" style="margin:12px 12px 0;">
+    <div class="card-body" style="padding:10px 12px;">
+      <input type="text" id="historySearch" placeholder="Cari nama barang atau karyawan…" oninput="renderHistory()" style="margin:0;font-size:.82rem;"/>
+    </div>
+  </div>
+  <div class="tx-list" id="txList"><div class="empty"><p>Loading…</p></div></div>
+</div>
+
+</main>
+</div><!-- #app -->
+
+<div id="toast"></div>
+
+<script>
+// ─── Config ───────────────────────────────────────────────────
+let API_URL      = localStorage.getItem("apiUrl") || "";
+let employeeName = localStorage.getItem("empName") || "";
+let currentType  = "IN";
+let allStock     = [];
+let allHistory   = [];
+let itemCache    = {};
+let lookupTimer  = null;
+
+// ─── Boot ─────────────────────────────────────────────────────
+window.onload = async function() {
+  if (!API_URL || !employeeName) {
+    document.getElementById("loadingOverlay").style.display = "none";
+    document.getElementById("setupScreen").style.display = "flex";
+    return;
+  }
+  initApp();
+};
+
+async function initApp() {
+  updateEmployeeDisplay();
+  document.getElementById("app").style.display = "flex";
+  try {
+    await Promise.all([loadDashboard(), loadStock(), loadHistory()]);
+  } catch(e) {
+    showToast("Gagal konek ke server. Cek URL API.", "error");
+  }
+  document.getElementById("loadingOverlay").style.display = "none";
+}
+
+// ─── Setup ────────────────────────────────────────────────────
+function saveSetup() {
+  const url  = document.getElementById("setupApiUrl").value.trim();
+  const name = document.getElementById("setupName").value.trim();
+  if (!url)  { alert("Masukkan URL API terlebih dahulu"); return; }
+  if (!name) { alert("Masukkan nama kamu"); return; }
+  if (!url.includes("script.google.com")) { alert("URL tidak valid. Pastikan URL dari Google Apps Script"); return; }
+  API_URL = url;
+  employeeName = name;
+  localStorage.setItem("apiUrl", url);
+  localStorage.setItem("empName", name);
+  document.getElementById("setupScreen").style.display = "none";
+  document.getElementById("loadingOverlay").style.display = "flex";
+  initApp();
+}
+
+function changeUser() {
+  const name = prompt("Ganti nama kamu:", employeeName);
+  if (name && name.trim()) {
+    employeeName = name.trim();
+    localStorage.setItem("empName", employeeName);
+    updateEmployeeDisplay();
+    showToast("Nama diubah ke: " + employeeName, "success");
+  }
+}
+
+function updateEmployeeDisplay() {
+  document.getElementById("headerName").textContent = employeeName.split(" ")[0] || "–";
+  document.getElementById("avatarInitial").textContent = (employeeName[0]||"?").toUpperCase();
+}
+
+// ─── API helper ───────────────────────────────────────────────
+async function api(params) {
+  const url = API_URL + "?" + new URLSearchParams(params);
+  const res = await fetch(url);
+  return res.json();
+}
+
+async function apiPost(body) {
+  const res = await fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+// ─── Navigation ───────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("page-"+id).classList.add("active");
+  document.getElementById("nav-"+id).classList.add("active");
+}
+function goScan(type) {
+  showPage("scan");
+  setType(type);
+  setTimeout(() => document.getElementById("itemIdInput").focus(), 200);
+}
+
+// ─── Type toggle ──────────────────────────────────────────────
+function setType(t) {
+  currentType = t;
+  document.getElementById("btnIN").className  = "type-btn"+(t==="IN" ?" active-in":"");
+  document.getElementById("btnOUT").className = "type-btn"+(t==="OUT"?" active-out":"");
+  document.getElementById("submitBtn").className = "btn-primary"+(t==="OUT"?" out-mode":"");
+}
+
+// ─── Item lookup ──────────────────────────────────────────────
+function onItemIdChange() {
+  clearTimeout(lookupTimer);
+  const id = document.getElementById("itemIdInput").value.trim();
+  if (!id) { hidePreview(); return; }
+  lookupTimer = setTimeout(() => doLookup(id), 600);
+}
+
+async function doLookup(id) {
+  if (itemCache[id.toUpperCase()]) { showPreview(itemCache[id.toUpperCase()]); return; }
+  try {
+    const res = await api({ action:"lookup", id });
+    if (res.found) { itemCache[res.id.toUpperCase()] = res; showPreview(res); }
+    else hidePreview();
+  } catch(e) { hidePreview(); }
+}
+
+function showPreview(item) {
+  document.getElementById("previewName").textContent  = item.name;
+  document.getElementById("previewCat").textContent   = item.category + " · " + item.unit;
+  const el = document.getElementById("previewStock");
+  el.textContent  = "Stok: " + item.current + " " + item.unit;
+  el.className    = "item-preview-stock" + (item.current <= item.minStock ? " stock-low" : "");
+  document.getElementById("itemPreview").classList.add("show");
+}
+function hidePreview() { document.getElementById("itemPreview").classList.remove("show"); }
+
+// ─── Submit ───────────────────────────────────────────────────
+async function submitForm() {
+  const itemId = document.getElementById("itemIdInput").value.trim();
+  const qty    = document.getElementById("qtyInput").value.trim();
+  const notes  = document.getElementById("notesInput").value.trim();
+
+  if (!itemId) { showToast("Masukkan atau scan Item ID", "error"); return; }
+  if (!qty || Number(qty) <= 0) { showToast("Masukkan jumlah yang valid", "error"); return; }
+
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Menyimpan…';
+
+  try {
+    const res = await apiPost({ action:"submit", itemId, type:currentType, qty:Number(qty), employee:employeeName, notes });
+    if (res.ok) {
+      if (itemCache[itemId.toUpperCase()]) itemCache[itemId.toUpperCase()].current = res.newBalance;
+      showToast(res.msg, res.lowStock ? "warn" : "success");
+      document.getElementById("itemIdInput").value = "";
+      document.getElementById("qtyInput").value    = "";
+      document.getElementById("notesInput").value  = "";
+      hidePreview();
+      loadDashboard(); loadStock(); loadHistory();
+    } else {
+      showToast(res.msg, "error");
+    }
+  } catch(e) {
+    showToast("Gagal konek. Periksa koneksi internet.", "error");
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Simpan Transaksi';
+}
+
+// ─── Load dashboard ───────────────────────────────────────────
+async function loadDashboard() {
+  const [stock, history] = await Promise.all([
+    api({ action:"stock" }),
+    api({ action:"history" })
+  ]);
+  allStock   = stock;
+  allHistory = history;
+
+  const low = stock.filter(d => d.status === "LOW");
+  document.getElementById("statTotal").textContent = stock.length;
+  document.getElementById("statLow").textContent   = low.length;
+
+  const today = new Date().toLocaleDateString("id-ID",{day:"2-digit",month:"2-digit",year:"numeric"}).replace(/\//g,"/");
+  const todayShort = new Date().toLocaleDateString("en-GB");  // dd/mm/yyyy
+  const inT  = history.filter(t => t.timestamp.startsWith(todayShort) && t.type==="IN").length;
+  const outT = history.filter(t => t.timestamp.startsWith(todayShort) && t.type==="OUT").length;
+  document.getElementById("statIn").textContent  = inT;
+  document.getElementById("statOut").textContent = outT;
+
+  const container = document.getElementById("lowStockList");
+  if (!low.length) {
+    container.innerHTML = '<div class="empty"><p>Semua stok aman 🎉</p></div>';
+  } else {
+    container.innerHTML = low.map(item => `
+      <div class="stock-card low" style="margin-bottom:8px;">
+        <div class="stock-card-icon">📦</div>
+        <div class="stock-info">
+          <div class="stock-name">${item.name}</div>
+          <div class="stock-id">${item.id}</div>
+          <span class="stock-badge badge-low">⚠️ Low Stock</span>
+        </div>
+        <div class="stock-qty-wrap">
+          <div class="stock-qty">${item.current}</div>
+          <div class="stock-unit">${item.unit}</div>
+        </div>
+      </div>`).join("");
+  }
+}
+
+// ─── Load stock ───────────────────────────────────────────────
+async function loadStock() {
+  const data = await api({ action:"stock" });
+  allStock = data;
+  renderStock("ALL");
+}
+function filterStock(f, el) {
+  document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
+  el.classList.add("active");
+  renderStock(f);
+}
+function renderStock(filter) {
+  const grid  = document.getElementById("stockGrid");
+  let items   = allStock;
+  if (filter==="LOW") items = allStock.filter(i=>i.status==="LOW");
+  if (filter==="OK")  items = allStock.filter(i=>i.status==="OK");
+  if (!items.length) { grid.innerHTML='<div class="empty"><p>Tidak ada item</p></div>'; return; }
+  const icons = {"Stationery":"✏️","Paper":"📄","Ink":"🖊️","Electronics":"💻","Cleaning":"🧹","Other":"📦"};
+  grid.innerHTML = items.map(item => {
+    const isLow = item.status==="LOW";
+    return `<div class="stock-card ${isLow?"low":"ok"}">
+      <div class="stock-card-icon">${icons[item.category]||"📦"}</div>
+      <div class="stock-info">
+        <div class="stock-name">${item.name}</div>
+        <div class="stock-id">${item.id} · ${item.category}</div>
+        <span class="stock-badge ${isLow?"badge-low":"badge-ok"}">${isLow?"⚠️ Low":"✅ OK"}</span>
+      </div>
+      <div class="stock-qty-wrap">
+        <div class="stock-qty">${item.current}</div>
+        <div class="stock-unit">${item.unit}</div>
+        <div style="font-size:.6rem;color:var(--muted);margin-top:2px;">min:${item.minStock}</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ─── Load history ─────────────────────────────────────────────
+async function loadHistory() {
+  const data = await api({ action:"history" });
+  allHistory = data;
+  renderHistory();
+}
+function renderHistory() {
+  const q    = document.getElementById("historySearch").value.toLowerCase();
+  const list = document.getElementById("txList");
+  let items  = allHistory;
+  if (q) items = items.filter(t =>
+    t.itemName.toLowerCase().includes(q) || t.employee.toLowerCase().includes(q));
+  if (!items.length) { list.innerHTML='<div class="empty"><p>Tidak ada transaksi</p></div>'; return; }
+  list.innerHTML = items.map(t => `
+    <div class="tx-item">
+      <div class="tx-type-badge ${t.type}">${t.type}</div>
+      <div class="tx-detail">
+        <div class="tx-name">${t.itemName}</div>
+        <div class="tx-meta">${t.employee} · ${t.timestamp}</div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-qty ${t.type}">${t.type==="IN"?"+":"−"}${t.qty}</div>
+        <div class="tx-balance">sisa: ${t.balance}</div>
+      </div>
+    </div>`).join("");
+}
+
+// ─── Toast ────────────────────────────────────────────────────
+function showToast(msg, type) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className   = "show "+(type||"");
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className="", 3500);
+}
+</script>
+</body>
+</html>
