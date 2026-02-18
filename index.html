@@ -6,6 +6,7 @@
 <title>StockOS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -165,6 +166,51 @@ input:focus{border-color:var(--accent);background:#151522;}
 .empty{text-align:center;padding:40px 20px;color:var(--muted);}
 .empty p{font-size:.85rem;}
 .section-label{padding:0 12px 8px;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+
+/* ── Camera Scanner Modal ── */
+#scannerModal{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.95);
+  display:none;flex-direction:column;align-items:center;justify-content:flex-start;
+  padding-top:0;}
+#scannerModal.show{display:flex;}
+.scanner-header{width:100%;display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;background:rgba(10,10,15,.8);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);}
+.scanner-title{font-size:1rem;font-weight:800;}
+.scanner-close{width:36px;height:36px;border-radius:50%;background:var(--surface2);
+  border:1px solid var(--border);color:var(--text);font-size:1.1rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;}
+.scanner-body{flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:16px;}
+#qr-reader{width:100%;max-width:340px;border-radius:var(--radius);overflow:hidden;
+  border:2px solid var(--accent);box-shadow:0 0 30px rgba(0,229,255,.2);}
+/* Override html5-qrcode default styles */
+#qr-reader video{border-radius:12px;}
+#qr-reader img{display:none!important;}
+#qr-reader__scan_region{border-radius:10px;overflow:hidden;}
+#qr-reader__dashboard{display:none!important;}
+.scanner-hint{color:var(--muted);font-size:.82rem;text-align:center;line-height:1.5;}
+.scanner-hint strong{color:var(--accent);display:block;font-size:.95rem;margin-bottom:4px;}
+/* Viewfinder overlay */
+.scanner-frame{position:relative;width:100%;max-width:340px;}
+.scanner-corners{position:absolute;inset:0;pointer-events:none;z-index:10;}
+.scanner-corners::before,.scanner-corners::after{content:"";position:absolute;width:28px;height:28px;border-color:var(--accent);border-style:solid;}
+.scanner-corners::before{top:8px;left:8px;border-width:3px 0 0 3px;border-radius:4px 0 0 0;}
+.scanner-corners::after{bottom:8px;right:8px;border-width:0 3px 3px 0;border-radius:0 0 4px 0;}
+.scanner-extra-corners{position:absolute;inset:0;pointer-events:none;z-index:10;}
+.scanner-extra-corners::before,.scanner-extra-corners::after{content:"";position:absolute;width:28px;height:28px;border-color:var(--accent);border-style:solid;}
+.scanner-extra-corners::before{top:8px;right:8px;border-width:3px 3px 0 0;border-radius:0 4px 0 0;}
+.scanner-extra-corners::after{bottom:8px;left:8px;border-width:0 0 3px 3px;border-radius:0 0 0 4px;}
+/* Scan line animation */
+.scan-line{position:absolute;left:12px;right:12px;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  z-index:11;animation:scanline 2s ease-in-out infinite;top:50%;}
+@keyframes scanline{0%,100%{top:15%;opacity:.8;}50%{top:85%;opacity:1;}}
+/* Scan button in form */
+.btn-scan{width:100%;padding:12px;border-radius:var(--radius-sm);
+  background:rgba(0,229,255,.08);border:1.5px dashed rgba(0,229,255,.4);
+  color:var(--accent);font-family:var(--font);font-size:.85rem;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:all .2s;margin-bottom:12px;}
+.btn-scan:active{background:rgba(0,229,255,.15);}
+.btn-scan svg{width:18px;height:18px;}
 </style>
 </head>
 <body>
@@ -252,7 +298,14 @@ input:focus{border-color:var(--accent);background:#151522;}
         </div>
         <div class="form-group">
           <label>Item ID / Barcode</label>
-          <input type="text" id="itemIdInput" placeholder="Scan atau ketik e.g. OFF-001"
+          <button class="btn-scan" onclick="openScanner()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/>
+              <rect x="7" y="7" width="3" height="3"/><rect x="14" y="7" width="3" height="3"/><rect x="7" y="14" width="3" height="3"/>
+            </svg>
+            Buka Kamera & Scan Barcode
+          </button>
+          <input type="text" id="itemIdInput" placeholder="Atau ketik manual e.g. OFF-001"
             oninput="onItemIdChange()" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"/>
           <div class="item-preview" id="itemPreview">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -284,6 +337,26 @@ input:focus{border-color:var(--accent);background:#151522;}
       <div class="tx-list" id="txList"><div class="empty"><p>Loading…</p></div></div>
     </div>
   </main>
+</div>
+
+<!-- Camera Scanner Modal -->
+<div id="scannerModal">
+  <div class="scanner-header">
+    <div class="scanner-title">📷 Scan Barcode</div>
+    <button class="scanner-close" onclick="closeScanner()">✕</button>
+  </div>
+  <div class="scanner-body">
+    <div class="scanner-frame">
+      <div id="qr-reader"></div>
+      <div class="scanner-corners"></div>
+      <div class="scanner-extra-corners"></div>
+      <div class="scan-line"></div>
+    </div>
+    <div class="scanner-hint">
+      <strong>Arahkan kamera ke barcode</strong>
+      Mendukung QR Code, Code128, EAN, UPC, dan lainnya
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -438,6 +511,76 @@ function setType(t) {
   document.getElementById("btnOUT").className = "type-btn"+(t==="OUT"?" active-out":"");
   document.getElementById("submitBtn").className = "btn-primary"+(t==="OUT"?" out-mode":"");
 }
+
+// ── Camera Scanner ────────────────────────────────────────────
+let html5QrCode = null;
+let scannerOpen = false;
+
+function openScanner() {
+  if (scannerOpen) return;
+  document.getElementById("scannerModal").classList.add("show");
+  scannerOpen = true;
+
+  // Small delay to let modal render first
+  setTimeout(() => {
+    html5QrCode = new Html5Qrcode("qr-reader");
+    html5QrCode.start(
+      { facingMode: "environment" }, // use back camera
+      {
+        fps: 10,
+        qrbox: { width: 240, height: 180 },
+        aspectRatio: 1.0,
+        disableFlip: false,
+      },
+      (decodedText) => {
+        // Success — barcode scanned!
+        onBarcodeScanned(decodedText);
+      },
+      (errorMsg) => {
+        // Scan error (not a barcode) — silently ignore
+      }
+    ).catch(err => {
+      showToast("Tidak bisa akses kamera: " + err, "error");
+      closeScanner();
+    });
+  }, 300);
+}
+
+function closeScanner() {
+  if (html5QrCode && scannerOpen) {
+    html5QrCode.stop().catch(() => {}).finally(() => {
+      html5QrCode = null;
+      scannerOpen = false;
+      document.getElementById("scannerModal").classList.remove("show");
+    });
+  } else {
+    scannerOpen = false;
+    document.getElementById("scannerModal").classList.remove("show");
+  }
+}
+
+function onBarcodeScanned(code) {
+  // Vibrate on success
+  if (navigator.vibrate) navigator.vibrate(100);
+
+  closeScanner();
+
+  // Fill the input
+  const input = document.getElementById("itemIdInput");
+  input.value = code.trim().toUpperCase();
+  showToast("✅ Barcode terbaca: " + code, "success");
+
+  // Trigger lookup
+  onItemIdChange();
+
+  // Focus qty field after short delay
+  setTimeout(() => document.getElementById("qtyInput").focus(), 600);
+}
+
+// Close scanner on back button / swipe
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && scannerOpen) closeScanner();
+});
 
 // ── Item lookup ───────────────────────────────────────────────
 function onItemIdChange() {
